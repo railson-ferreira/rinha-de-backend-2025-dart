@@ -1,3 +1,6 @@
 .idea
 .dart_tool/
+modules
+Dockerfile
+docker-compose.yaml
 rinha.db*

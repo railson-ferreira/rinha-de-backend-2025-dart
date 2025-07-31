@@ -7,16 +7,17 @@ A Dart implementation for the Rinha de Backend 2025 challenge.
 - Dart backend service
 - Isolate pool for concurrency
 - SQLite database for storage
+- Pingora load balancer for routing requests
 
 ## Getting Started
 
 ### Prerequisites
 
-- [Dart SDK](https://dart.dev/get-dart)
-- [SQLite](https://www.sqlite.org/)
+- Docker
 
 ## Configuration
 Environment variables (see docker-compose.yaml):  
+- `REPOSITORY_URL`
 - `PAYMENT_PROCESSOR_DEFAULT_URL` 
 - `PAYMENT_PROCESSOR_FALLBACK_URL`
 

@@ -1,0 +1,10 @@
+[package]
+name = "pingora_balancer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pingora = { version = "0.1", features = [ "lb" ] }
+async-trait = "0.1.88"
+url = "2.5.4"
+jemallocator = "0.5"
