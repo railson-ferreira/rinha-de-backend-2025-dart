@@ -1,0 +1,5 @@
+**/.idea
+**/.dart_tool/
+**/Dockerfile
+**/docker-compose.yaml
+**/rinha.db*
