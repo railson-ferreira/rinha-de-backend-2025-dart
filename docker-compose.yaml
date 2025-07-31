@@ -3,11 +3,14 @@ x-service-templates:
     build:
       context: .
     environment:
+      - REPOSITORY_URL=ws://repository:8080
       - PAYMENT_PROCESSOR_DEFAULT_URL=http://payment-processor-default:8080
       - PAYMENT_PROCESSOR_FALLBACK_URL=http://payment-processor-fallback:8080
     networks:
       - backend
       - payment-processor
+    depends_on:
+      - repository
     deploy:
       resources:
         limits:
@@ -15,6 +18,18 @@ x-service-templates:
           memory: "100MB"
 
 services:
+  repository:
+    build:
+      context: modules/repository
+    networks:
+      - backend
+      - payment-processor
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: "100MB"
+
   api1:
     <<: *api
     ports:
@@ -33,12 +48,14 @@ services:
         - HOSTS=api1:8080,api2:8080
     networks:
       - backend
-      - payment-processor
+    depends_on:
+      - api1
+      - api2
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: "100MB"
+          cpus: '0.2'
+          memory: "50MB"
 
 networks:
   backend:

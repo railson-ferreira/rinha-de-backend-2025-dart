@@ -1,6 +1,6 @@
-.idea
-.dart_tool/
-modules
-Dockerfile
-docker-compose.yaml
-rinha.db*
+**/.idea
+**/.dart_tool/
+modules/load-balancer
+**/Dockerfile
+**/docker-compose.yaml
+**/rinha.db*

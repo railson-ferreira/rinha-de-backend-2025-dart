@@ -4,10 +4,10 @@ import 'dart:io';
 
 import 'package:rinha_de_backend_2025_dart/debug.dart';
 import 'package:rinha_de_backend_2025_dart/isolates_pool.dart';
-import 'package:rinha_de_backend_2025_dart/payment_processor_enum.dart';
 import 'package:rinha_de_backend_2025_dart/payment_processors_statuses.dart';
 import 'package:rinha_de_backend_2025_dart/payments_repository.dart';
 import 'package:rinha_de_backend_2025_dart/vars.dart';
+import 'package:shared_kernel/payment_processor_enum.dart';
 
 void handlePayments(HttpRequest request) async {
   String body = await utf8.decoder.bind(request).join();
@@ -32,8 +32,8 @@ void handleQueue() async {
   try {
     isQueueHandling = true;
     while (paymentProcessorsStatuses.length < 2) {
-      debug("waiting statuses...");
-      await Future.delayed(Duration(milliseconds: 1));
+      print("waiting statuses...");
+      await Future.delayed(Duration(milliseconds: 10));
     }
     // debug("Queue handler started");
     while (queue.isNotEmpty) {
@@ -137,7 +137,7 @@ Future<bool> handleAction(PaymentAction action) async {
         }
       });
     } catch (e) {
-      if (e is! DatabaseException) {
+      if (e is! RepositoryException) {
         // If the request fails, we remove the payment from the repository
         await PaymentsRepository.instance.removePayment(action.correlationId);
       }

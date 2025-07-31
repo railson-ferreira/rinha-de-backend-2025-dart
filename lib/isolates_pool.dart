@@ -4,8 +4,7 @@ import 'dart:isolate';
 import 'package:rinha_de_backend_2025_dart/handle_payments.dart';
 import 'package:rinha_de_backend_2025_dart/payment_processors_statuses.dart';
 import 'package:rinha_de_backend_2025_dart/vars.dart';
-
-import 'database_isolate.dart';
+import 'package:shared_kernel/payment_processor_status.dart';
 
 final isolatesCompleter = Completer<List<SendPort>>();
 List<SendPort>? maybeIsolates = null;
@@ -58,9 +57,6 @@ void isolateEntry(({int isolateIndex, SendPort sendPort}) params) {
             break;
           case PaymentProcessorStatus status:
             paymentProcessorsStatuses[status.processor] = status;
-            break;
-          case SqlIsolateMessage sqlIsolateMessage:
-            sqlIsolateSendPort.complete(sqlIsolateMessage.sendPort);
             break;
           default:
             print("Isolate $isolateIndex received unknown event: $event");

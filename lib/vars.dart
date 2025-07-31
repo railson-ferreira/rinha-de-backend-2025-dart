@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:math';
 
+final repositoryUrl = Uri.parse(Platform.environment['REPOSITORY_URL']!);
+
 final paymentProcessorDefaultUrl = Uri.parse(
   Platform.environment['PAYMENT_PROCESSOR_DEFAULT_URL']!,
 );
@@ -10,5 +12,5 @@ final paymentProcessorFallbackUrl = Uri.parse(
 
 final debugLogsEnabled = Platform.environment['DEBUG_LOGS_ENABLED'] == 'true';
 
-final concurrentLimit = 4;
+final concurrentLimit = 1;
 final numberOfIsolates = min(concurrentLimit, Platform.numberOfProcessors);

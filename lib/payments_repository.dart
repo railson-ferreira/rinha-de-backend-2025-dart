@@ -1,33 +1,27 @@
-import 'dart:isolate';
-
-import 'package:rinha_de_backend_2025_dart/database_isolate.dart';
 import 'package:rinha_de_backend_2025_dart/handle_payments.dart';
-import 'package:rinha_de_backend_2025_dart/payment_processor_enum.dart';
 import 'package:rinha_de_backend_2025_dart/payment_summary_item.dart';
+import 'package:rinha_de_backend_2025_dart/repository_client.dart';
+import 'package:shared_kernel/payment_processor_enum.dart';
+import 'package:shared_kernel/sql_execute.dart';
+import 'package:shared_kernel/sql_get.dart';
 
 class PaymentsRepository {
-  static final PaymentsRepository instance = PaymentsRepository();
+  static final PaymentsRepository instance = PaymentsRepository._(
+    RepositoryClient.instance,
+  );
+  final RepositoryClient _repositoryClient;
 
-  Future<SendPort> _sqlSendPort = sqlIsolateSendPort.future;
-  Future<SendPort> get sqlSendPort async {
-    try {
-      return _sqlSendPort;
-    } catch (e) {
-      print("Error getting database: $e");
-      return _sqlSendPort = sqlIsolateSendPort.future;
-    }
-  }
+  PaymentsRepository._(this._repositoryClient);
 
   Future<void> insertPayment(
     PaymentAction payment,
     PaymentProcessor processor,
     DateTime requestedAt,
   ) async {
-    final sendPort = await sqlSendPort;
-    final responsePort = ReceivePort();
-    sendPort.send(
-      SqlExecute(
-        sql: '''
+    try {
+      await _repositoryClient.sqlExecute(
+        SqlExecute(
+          sql: '''
     INSERT INTO payments (
       correlationId,
       amountInCents,
@@ -35,39 +29,34 @@ class PaymentsRepository {
       processor
     ) VALUES (?, ?, ?, ?);
   ''',
-        parameters: [
-          payment.correlationId,
-          (payment.amount * 100).round(),
-          requestedAt.millisecondsSinceEpoch,
-          switch (processor) {
-            PaymentProcessor.default_ => "default",
-            PaymentProcessor.fallback_ => "fallback",
-          },
-        ],
-        responsePort: responsePort.sendPort,
-      ),
-    );
-    final response = await responsePort.first as SqlExecuteResponse;
-    if (response.error != null) {
-      throw DatabaseException("Error inserting payment: ${response.error}");
+          parameters: [
+            payment.correlationId,
+            (payment.amount * 100).round(),
+            requestedAt.millisecondsSinceEpoch,
+            switch (processor) {
+              PaymentProcessor.default_ => "default",
+              PaymentProcessor.fallback_ => "fallback",
+            },
+          ],
+        ),
+      );
+    } catch (error) {
+      throw RepositoryException("Error inserting payment: $error");
     }
   }
 
   Future<void> removePayment(String correlationId) async {
-    final sendPort = await sqlSendPort;
-    final responsePort = ReceivePort();
-    sendPort.send(
-      SqlExecute(
-        sql: '''
+    try {
+      await _repositoryClient.sqlExecute(
+        SqlExecute(
+          sql: '''
     DELETE FROM payments WHERE correlationId = ?;
   ''',
-        parameters: [correlationId],
-        responsePort: responsePort.sendPort,
-      ),
-    );
-    final response = await responsePort.first as SqlExecuteResponse;
-    if (response.error != null) {
-      throw DatabaseException("Error removing payment: ${response.error}");
+          parameters: [correlationId],
+        ),
+      );
+    } catch (error) {
+      throw RepositoryException("Error removing payment: $error");
     }
   }
 
@@ -75,36 +64,34 @@ class PaymentsRepository {
     required DateTime? from,
     required DateTime? to,
   }) async {
-    final sendPort = await sqlSendPort;
-    final responsePort = ReceivePort();
-    sendPort.send(
-      SqlGet(
-        sql:
-            '''
+    final List<List<Object?>> rows;
+    try {
+      rows = await _repositoryClient.sqlGet(
+        SqlGet(
+          sql:
+              '''
     SELECT processor, COUNT(correlationId) AS totalRequests, SUM(amountInCents) AS totalAmount FROM payments
     ${from != null && to != null
-                ? 'WHERE requestedAtMs >= ? AND requestedAtMs <= ?'
-                : from != null
-                ? 'WHERE requestedAtMs >= ?'
-                : to != null
-                ? 'WHERE requestedAtMs <= ?'
-                : ''}
+                  ? 'WHERE requestedAtMs >= ? AND requestedAtMs <= ?'
+                  : from != null
+                  ? 'WHERE requestedAtMs >= ?'
+                  : to != null
+                  ? 'WHERE requestedAtMs <= ?'
+                  : ''}
     GROUP BY processor
   ''',
-        parameters: [
-          if (from != null) from.millisecondsSinceEpoch,
-          if (to != null) to.millisecondsSinceEpoch,
-        ],
-        responsePort: responsePort.sendPort,
-      ),
-    );
-    final response = await responsePort.first as SqlExecuteResponse;
-    if (response.error != null) {
-      throw DatabaseException(
-        "Error getting payments summary: ${response.error}",
+          parameters: [
+            if (from != null) from.millisecondsSinceEpoch,
+            if (to != null) to.millisecondsSinceEpoch,
+          ],
+        ),
+      );
+    } catch (error, st) {
+      Error.throwWithStackTrace(
+        RepositoryException("Error getting payments summary: $error"),
+        st,
       );
     }
-    final rows = response.rows!;
     final summary = <String, PaymentSummaryItem>{};
     for (final row in rows) {
       final processor = row[0];
@@ -135,12 +122,12 @@ class PaymentsRepository {
   }
 }
 
-class DatabaseException implements Exception {
+class RepositoryException implements Exception {
   final Exception _exception;
-  DatabaseException([var message]) : _exception = Exception(message);
+  RepositoryException([var message]) : _exception = Exception(message);
 
   @override
   String toString() {
-    return "DatabaseException: ${_exception.toString()}";
+    return "RepositoryException: ${_exception.toString()}";
   }
 }

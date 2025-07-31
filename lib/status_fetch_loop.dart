@@ -4,21 +4,58 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:rinha_de_backend_2025_dart/debug.dart';
-import 'package:rinha_de_backend_2025_dart/payment_processor_enum.dart';
-import 'package:rinha_de_backend_2025_dart/payment_processors_statuses.dart';
+import 'package:rinha_de_backend_2025_dart/status_repository.dart';
 import 'package:rinha_de_backend_2025_dart/vars.dart';
+import 'package:shared_kernel/payment_processor_enum.dart';
+import 'package:shared_kernel/payment_processor_status.dart';
+import 'package:uuid/uuid.dart';
 
+final String instanceId = Uuid().v4();
 Future<void> startStatusFetchLoopIsolated(List<SendPort> ports) async {
   await Isolate.spawn((ports) async {
     runZonedGuarded(
-      () {
+      () async {
+        var imTheLeader = false;
         try {
-          updateStatus(PaymentProcessor.default_, ports);
-          updateStatus(PaymentProcessor.fallback_, ports);
-        } finally {
-          Timer.periodic(Duration(seconds: 5, milliseconds: 10), (timer) async {
+          imTheLeader = await StatusRepository.instance.setLeader(instanceId);
+          if (imTheLeader) {
+            await Future.wait([
+              fetchStatusAndSave(PaymentProcessor.default_),
+              fetchStatusAndSave(PaymentProcessor.fallback_),
+            ]);
             updateStatus(PaymentProcessor.default_, ports);
             updateStatus(PaymentProcessor.fallback_, ports);
+          }
+        } finally {
+          const Duration interval = Duration(seconds: 5, milliseconds: 10);
+          Timer.periodic(interval, (timer) async {
+            if (imTheLeader) {
+              imTheLeader = await StatusRepository.instance.updateLeader(
+                instanceId,
+              );
+            } else {
+              imTheLeader = await StatusRepository.instance.setLeader(
+                instanceId,
+              );
+            }
+          });
+          await Future.delayed(Duration(milliseconds: 100));
+          Timer.periodic(interval, (timer) async {
+            if (imTheLeader) {
+              fetchStatusAndSave(PaymentProcessor.default_).whenComplete(() {
+                updateStatus(PaymentProcessor.default_, ports);
+              });
+              fetchStatusAndSave(PaymentProcessor.fallback_).whenComplete(() {
+                updateStatus(PaymentProcessor.fallback_, ports);
+              });
+            }
+          });
+          await Future.delayed(Duration(milliseconds: 100));
+          Timer.periodic(interval ~/ 5, (timer) async {
+            if (!imTheLeader) {
+              updateStatus(PaymentProcessor.default_, ports);
+              updateStatus(PaymentProcessor.fallback_, ports);
+            }
           });
         }
       },
@@ -31,7 +68,7 @@ Future<void> startStatusFetchLoopIsolated(List<SendPort> ports) async {
   print('Status Fetch Loop started');
 }
 
-void updateStatus(PaymentProcessor processor, List<SendPort> ports) async {
+Future<void> fetchStatusAndSave(PaymentProcessor processor) async {
   final httpClient = HttpClient();
   try {
     debug(
@@ -58,13 +95,19 @@ void updateStatus(PaymentProcessor processor, List<SendPort> ports) async {
     final status = PaymentProcessorStatus(
       processor: processor,
       failing: json['failing'] as bool,
-      minResponseTimeInMs: (json['minResponseTime'] as num).toInt(),
+      minResponseTime: (json['minResponseTime'] as num).toInt(),
     );
-    debug('✅ status for $processor: $status');
-    for (var port in ports) {
-      port.send(status);
-    }
+    await StatusRepository.instance.setStatus(status);
+    debug('💾 status for $processor: $status');
   } finally {
     httpClient.close(force: true);
   }
+}
+
+void updateStatus(PaymentProcessor processor, List<SendPort> ports) async {
+  final status = await StatusRepository.instance.getStatus(processor);
+  for (var port in ports) {
+    port.send(status);
+  }
+  debug('✅ status for $processor: $status');
 }
