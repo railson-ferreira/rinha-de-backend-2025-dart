@@ -41,3 +41,33 @@ jobs:
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta-repository
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/repository
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: modules/repository
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta-repository.outputs.tags }}
+          labels: ${{ steps.meta-repository.outputs.labels }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta-pingora
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/pingora
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: modules/load-balancer
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta-pingora.outputs.tags }}
+          labels: ${{ steps.meta-pingora.outputs.labels }}
