@@ -3,6 +3,7 @@ x-service-templates:
     build:
       context: .
     environment:
+#      - DEBUG_LOGS_ENABLED=true
       - REPOSITORY_URL=ws://repository:8080
       - PAYMENT_PROCESSOR_DEFAULT_URL=http://payment-processor-default:8080
       - PAYMENT_PROCESSOR_FALLBACK_URL=http://payment-processor-fallback:8080
@@ -14,8 +15,8 @@ x-service-templates:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: "100MB"
+          cpus: '0.2'
+          memory: "50MB"
 
 services:
   repository:
@@ -28,16 +29,18 @@ services:
       resources:
         limits:
           cpus: '0.3'
-          memory: "100MB"
+          memory: "50MB"
 
   api1:
     <<: *api
-    ports:
-      - "9991:8080"
   api2:
     <<: *api
-    ports:
-      - "9992:8080"
+  api3:
+    <<: *api
+  api4:
+    <<: *api
+  api5:
+    <<: *api
 
   pingora:
     build:
@@ -45,7 +48,7 @@ services:
     ports:
       - "9999:8080"
     environment:
-        - HOSTS=api1:8080,api2:8080
+      - HOSTS=api1:8080,api2:8080,api3:8080,api4:8080,api5:8080
     networks:
       - backend
     depends_on:
@@ -54,7 +57,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.2'
+          cpus: "0.2"
           memory: "50MB"
 
 networks:

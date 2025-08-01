@@ -39,10 +39,10 @@ void handleQueue() async {
     while (queue.isNotEmpty) {
       final maxPerIsolate = concurrentLimit ~/ numberOfIsolates;
       if (concurrentQueueHandling >= maxPerIsolate) {
-        debug(
+        print(
           "Too many concurrent queue handling in this isolate($concurrentQueueHandling >= $maxPerIsolate), waiting...",
         );
-        await Future.delayed(Duration(milliseconds: 1));
+        await Future.delayed(Duration(milliseconds: 10));
         continue;
       }
       final (:index, :action) = queue.theOneWithHighestAmount();
