@@ -54,6 +54,9 @@ services:
     depends_on:
       - api1
       - api2
+      - api3
+      - api4
+      - api5
     deploy:
       resources:
         limits:
